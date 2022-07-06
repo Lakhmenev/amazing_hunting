@@ -1,4 +1,10 @@
+import json
+
 from django.http import HttpResponse, JsonResponse
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+from django.views.generic import DetailView
 
 from vacancies.models import Vacancy
 
@@ -7,8 +13,9 @@ def hello(request):
     return HttpResponse("Hello world")
 
 
-def index(request):
-    if request.method == "GET":
+@method_decorator(csrf_exempt, name="dispatch")
+class VacancyView(View):
+    def get(self, request):
         vacancies = Vacancy.objects.all()
 
         search_text = request.GET.get("text", None)
@@ -26,14 +33,25 @@ def index(request):
         # return JsonResponse(response, safe=False, json_dumps_params={"ensure_ascii": False})
         return JsonResponse(response, safe=False)
 
+    def post(self, request):
+        vacancy_data = json.loads(request.body)
 
-def get(request, vacancy_id):
-    if request.method == "GET":
-        try:
-            vacancy = Vacancy.objects.get(pk=vacancy_id)
-        except Vacancy.DoesNotExist:
-            return JsonResponse({"error": "Not found"}, status=404)
+        vacancy = Vacancy()
+        vacancy.text = vacancy_data['text']
 
+        vacancy.save()
+
+        return JsonResponse({
+            "id": vacancy.id,
+            "text": vacancy.text
+        })
+
+
+class VacancyDetailView(DetailView):
+    model = Vacancy
+
+    def get(self, request, *args, **kwargs):
+        vacancy = self.get_object()
 
         return JsonResponse({
             "id": vacancy.id,
