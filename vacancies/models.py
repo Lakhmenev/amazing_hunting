@@ -8,6 +8,7 @@ class Skill(models.Model):
     class Meta:
         verbose_name = "Навык"
         verbose_name_plural = "Навыки"
+        # ordering = ["text"]  Не советуют использовать так как влияет на все запросы
 
     def __str__(self):
         return self.name
