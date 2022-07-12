@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Avg
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
@@ -27,7 +28,7 @@ class VacancyListView(ListView):
             self.object_list = self.object_list.filter(text=search_text)
 
         # сортировка
-        self.object_list = self.object_list.order_by("text")
+        self.object_list = self.object_list.select_related("user").prefetch_related("skills").order_by("text")
 
         # """
         # 1 - 0:10
@@ -47,12 +48,16 @@ class VacancyListView(ListView):
         page_number = request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
-
         vacancies = []
         for vacancy in page_obj:
             vacancies.append({
                 "id": vacancy.id,
-                "text": vacancy.text
+                "text": vacancy.text,
+                "slug": vacancy.slug,
+                "status": vacancy.status,
+                "created": vacancy.created,
+                "user": vacancy.user.username,
+                "skills": list(map(str, vacancy.skills.all())),
             })
 
         response = {
@@ -78,7 +83,9 @@ class VacancyDetailView(DetailView):
                 "slug": vacancy.slug,
                 "status": vacancy.status,
                 "created": vacancy.created,
-                "user": vacancy.user_id
+                "user": vacancy.user_id,
+                "skills": list(map(str, vacancy.skills.all())),
+
             })
 
 
@@ -91,16 +98,31 @@ class VacancyCreateView(CreateView):
         vacancy_data = json.loads(request.body)
 
         vacancy = Vacancy.objects.create(
-            user_id=vacancy_data["user_id"],
             slug=vacancy_data["slug"],
             text=vacancy_data["text"],
             status=vacancy_data["status"],
         )
 
+        vacancy.user = get_object_or_404(User, pk=vacancy_data["user_id"])
+
+        for skill in vacancy_data["skills"]:
+            skill_obj, created = Skill.objects.get_or_create(
+                name=skill,
+                defaults={
+                    "is_active": True
+                }
+            )
+            vacancy.skills.add(skill_obj)
+        vacancy.save()
+
         return JsonResponse({
             "id": vacancy.id,
-            "text": vacancy.text
-            # "skills": list(vacancy.skills)
+            "text": vacancy.text,
+            "slug": vacancy.slug,
+            "status": vacancy.status,
+            "created": vacancy.created,
+            "user": vacancy.user_id,
+
         })
 
 

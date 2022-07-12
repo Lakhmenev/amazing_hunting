@@ -4,6 +4,7 @@ from django.db import models
 
 class Skill(models.Model):
     name = models.CharField(max_length=20)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "Навык"
