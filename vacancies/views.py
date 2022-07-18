@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, CreateView, UpdateView, DeleteView
 from amazing_hunting import settings
 from vacancies.models import Vacancy, Skill
+from vacancies.serializers import VacancySerializer
 
 
 def hello(request):
@@ -48,20 +49,21 @@ class VacancyListView(ListView):
         page_number = request.GET.get("page")
         page_obj = paginator.get_page(page_number)
 
-        vacancies = []
-        for vacancy in page_obj:
-            vacancies.append({
-                "id": vacancy.id,
-                "text": vacancy.text,
-                "slug": vacancy.slug,
-                "status": vacancy.status,
-                "created": vacancy.created,
-                "user": vacancy.user.username,
-                "skills": list(map(str, vacancy.skills.all())),
-            })
+        # vacancies = []
+        # for vacancy in page_obj:
+        #     vacancies.append({
+        #         "id": vacancy.id,
+        #         "text": vacancy.text,
+        #         "slug": vacancy.slug,
+        #         "status": vacancy.status,
+        #         "created": vacancy.created,
+        #         "user": vacancy.user.username,
+        #         "skills": list(map(str, vacancy.skills.all())),
+        #     })
+        list(map(lambda x: setattr(x, "username", x.user.username if x.user else None), page_obj))
 
         response = {
-            "items": vacancies,
+            "items": VacancySerializer(page_obj, many=True).data,
             "num_pages": paginator.num_pages,
             "total": paginator.count
         }
